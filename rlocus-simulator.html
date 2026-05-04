@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulator Tempat Kedudukan Akar — Sistem Kendali</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{background:#0b1117;color:#c0d4e0;font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;min-height:100vh;line-height:1.5}
+#app{max-width:1000px;margin:0 auto;padding:14px 16px}
+header{border-bottom:1px solid #1e3348;padding-bottom:12px;margin-bottom:14px}
+header h1{font-size:15px;font-weight:700;color:#e0f0ff;letter-spacing:.4px;margin-bottom:3px}
+header p{font-size:11px;color:#507090}
+.section{background:#0f1820;border:1px solid #1e3348;border-radius:7px;padding:12px 15px;margin-bottom:12px}
+.sec-title{font-size:10px;color:#507090;letter-spacing:1.2px;font-weight:700;text-transform:uppercase;margin-bottom:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.row:last-child{margin-bottom:0}
+label.lbl{font-size:12px;color:#88a0b0;min-width:88px}
+input[type=text],select{background:#070d14;border:1px solid #243a52;border-radius:4px;color:#c0d4e0;font-family:'Courier New',monospace;font-size:12px;padding:5px 8px;outline:none}
+input[type=text]:focus,select:focus{border-color:#16a37a}
+select{font-family:system-ui,Arial,sans-serif}
+.w-long{width:210px}
+.w-short{width:70px}
+button.btn{background:#16a37a;border:none;border-radius:4px;color:#fff;font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer;letter-spacing:.3px}
+button.btn:hover{background:#12c48a}
+#formulaDisplay{font-family:'Courier New',monospace;font-size:13px;color:#16c896;margin-top:8px;padding:7px 11px;background:#060d12;border-radius:4px;border:1px solid #0e2518;min-height:28px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.cpanel{background:#0f1820;border:1px solid #1e3348;border-radius:7px;padding:10px 12px}
+.cpanel-lbl{font-size:10px;color:#507090;letter-spacing:1.2px;font-weight:700;text-transform:uppercase;margin-bottom:7px}
+canvas{display:block;width:100%;border-radius:3px}
+.srow{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.srow .klbl{font-size:13px;color:#88a0b0;min-width:36px}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:#1e3348;border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#16a37a;cursor:pointer}
+#kDisplay{font-family:'Courier New',monospace;font-size:17px;font-weight:700;color:#e0f0ff;min-width:52px;text-align:right}
+#statusBar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;min-height:24px}
+.chip{padding:3px 9px;border-radius:3px;font-size:11px;font-weight:700;border:1px solid}
+.c-ok{background:rgba(22,163,122,.12);color:#16c896;border-color:#16a37a}
+.c-bad{background:rgba(192,57,43,.12);color:#e74c3c;border-color:#c0392b}
+.c-warn{background:rgba(230,126,34,.12);color:#f0a030;border-color:#e67e22}
+.c-info{background:rgba(41,128,185,.12);color:#5dade2;border-color:#2980b9}
+#narrative{font-size:12px;color:#80b898;border-left:3px solid #16a37a;padding:7px 11px;margin-top:9px;background:rgba(22,163,122,.05);border-radius:0 4px 4px 0;min-height:34px;line-height:1.6;transition:border-color .25s,background .25s,color .25s}
+#polesGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:7px;margin-top:8px}
+.pcard{background:#070d14;border:1px solid #1e3348;border-radius:4px;padding:8px;text-align:center}
+.pcard .plbl{font-size:10px;color:#507090;margin-bottom:4px}
+.pcard .pval{font-family:'Courier New',monospace;font-size:11px;font-weight:700}
+.p-ok{color:#16c896}.p-bad{color:#e74c3c}
+.hint{font-size:10px;color:#3a5060;margin-top:5px;line-height:1.6}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <h1>SIMULATOR TEMPAT KEDUDUKAN AKAR &amp; RESPONS TANGGA</h1>
+  <p>Sistem Kendali — Teknik Elektro &nbsp;|&nbsp; Buka dengan browser apa pun, bekerja tanpa internet</p>
+</header>
+
+<!-- Plant config -->
+<div class="section">
+  <div class="sec-title">Konfigurasi Plant &nbsp; G(s) = K · N(s) / D(s)</div>
+  <div class="row">
+    <label class="lbl">Preset:</label>
+    <select id="presetSel" onchange="loadPreset()" style="width:320px">
+      <option value="0">Orde-1: K / (s+2)</option>
+      <option value="1">Orde-2: K / [(s+1)(s+3)]</option>
+      <option value="2" selected>Orde-3 standar: K / [s(s+2)(s+4)]</option>
+      <option value="3">Orde-3: K / [s(s+1)(s+5)]</option>
+      <option value="4">Orde-3 + nol: K(s+1) / [s(s+3)(s+6)]</option>
+      <option value="5">Double integrator: K / [s²(s+5)]</option>
+      <option value="6">Orde-4: K / [s(s+1)(s+2)(s+4)]</option>
+      <option value="7">— Custom (edit manual) —</option>
+    </select>
+  </div>
+  <div class="row">
+    <label class="lbl">Poles D(s):</label>
+    <input type="text" id="polesIn" class="w-long" value="0, -2, -4" placeholder="mis: 0, -2, -4">
+    <label class="lbl" style="min-width:58px">K maks:</label>
+    <input type="text" id="kmaxIn" class="w-short" value="100">
+  </div>
+  <div class="row">
+    <label class="lbl">Zeros N(s):</label>
+    <input type="text" id="zerosIn" class="w-long" value="" placeholder="kosong = tidak ada nol">
+    <button class="btn" onclick="applyPlant()">Terapkan ▶</button>
+  </div>
+  <div id="formulaDisplay">G(s) = K / [s(s+2)(s+4)]</div>
+</div>
+
+<!-- Canvases -->
+<div class="grid2">
+  <div class="cpanel">
+    <div class="cpanel-lbl">Bidang-S (S-Plane)</div>
+    <canvas id="splane" width="450" height="340"></canvas>
+    <div class="hint">× = kutub terbuka (K=0) &nbsp;·&nbsp; ○ = nol terbuka &nbsp;·&nbsp; ● = kutub aktif &nbsp;·&nbsp; garis putus = batas stabilitas &nbsp;·&nbsp; garis tipis = asimtot</div>
+  </div>
+  <div class="cpanel">
+    <div class="cpanel-lbl">Respons Tangga (Step Response)</div>
+    <canvas id="stepcanvas" width="450" height="340"></canvas>
+    <div class="hint">Hijau = sistem stabil &nbsp;·&nbsp; Merah = sistem tidak stabil &nbsp;·&nbsp; Garis putus-putus = nilai setpoint (y_∞)</div>
+  </div>
+</div>
+
+<!-- K Slider + status -->
+<div class="section">
+  <div class="srow">
+    <span class="klbl">K =</span>
+    <input type="range" id="kSlider" min="0.1" max="100" step="0.5" value="10">
+    <span id="kDisplay">10.0</span>
+  </div>
+  <div id="statusBar"></div>
+  <div id="narrative">Geser slider K untuk melihat bagaimana kutub-kutub bergerak di S-plane dan bagaimana respons tangga berubah.</div>
+</div>
+
+<!-- Poles display -->
+<div class="section">
+  <div class="sec-title">Posisi Kutub (Poles) Saat Ini</div>
+  <div id="polesGrid"></div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+// ═══════════════════════════════════════════════════
+// ARITMETIKA KOMPLEKS
+// ═══════════════════════════════════════════════════
+const C={
+  add:(a,b)=>({re:a.re+b.re,im:a.im+b.im}),
+  sub:(a,b)=>({re:a.re-b.re,im:a.im-b.im}),
+  mul:(a,b)=>({re:a.re*b.re-a.im*b.im,im:a.re*b.im+a.im*b.re}),
+  div:(a,b)=>{const d=b.re*b.re+b.im*b.im+1e-300;return{re:(a.re*b.re+a.im*b.im)/d,im:(a.im*b.re-a.re*b.im)/d};},
+  abs:(a)=>Math.sqrt(a.re*a.re+a.im*a.im)
+};
+
+function polyEval(c,z){
+  let r={re:c[0],im:0};
+  for(let i=1;i<c.length;i++) r=C.add(C.mul(r,z),{re:c[i],im:0});
+  return r;
+}
+
+// Pencarian akar polinomial — metode Durand-Kerner
+function findRoots(coeffs){
+  const n=coeffs.length-1;
+  if(n===0) return [];
+  if(n===1) return [{re:-coeffs[1]/coeffs[0],im:0}];
+  const a0=coeffs[0];
+  const p=coeffs.map(c=>c/a0);
+  const r0=1+Math.max(...p.slice(1).map(c=>Math.abs(c)));
+  let roots=Array.from({length:n},(_,k)=>({
+    re:r0*Math.cos(2*Math.PI*k/n+0.1),
+    im:r0*Math.sin(2*Math.PI*k/n+0.1)
+  }));
+  for(let it=0;it<400;it++){
+    let mx=0;
+    const nr=roots.map((z,i)=>{
+      const pz=polyEval(p,z);
+      let d={re:1,im:0};
+      for(let j=0;j<n;j++) if(j!==i) d=C.mul(d,C.sub(z,roots[j]));
+      const ab=C.abs(d);
+      const corr=ab<1e-30?{re:0,im:0}:C.div(pz,d);
+      const nz=C.sub(z,corr);
+      mx=Math.max(mx,C.abs(C.sub(nz,z)));
+      return nz;
+    });
+    roots=nr;
+    if(mx<1e-12) break;
+  }
+  return roots;
+}
+
+// ═══════════════════════════════════════════════════
+// OPERASI POLINOMIAL
+// ═══════════════════════════════════════════════════
+function polyMul(p1,p2){
+  const r=new Array(p1.length+p2.length-1).fill(0);
+  for(let i=0;i<p1.length;i++) for(let j=0;j<p2.length;j++) r[i+j]+=p1[i]*p2[j];
+  return r;
+}
+
+function polyFromRoots(roots){
+  // roots: posisi akar (bukan negatif). (s - root_i)
+  if(roots.length===0) return [1];
+  let p=[1];
+  roots.forEach(r=>p=polyMul(p,[1,-r]));
+  return p;
+}
+
+function charPolyCoeffs(K,D,N){
+  // Polinomial karakteristik: D(s) + K*N(s)
+  const len=D.length;
+  const Np=[...Array(len-N.length).fill(0),...N];
+  return D.map((d,i)=>d+K*Np[i]);
+}
+
+function dcGain(K,D,N){
+  // H_cl(0) = K*N(0) / char(0,K)
+  const c0=charPolyCoeffs(K,D,N).slice(-1)[0];
+  const n0=N.slice(-1)[0];
+  if(Math.abs(c0)<1e-8) return 1; // sistem ber-integrator
+  return (K*n0)/c0;
+}
+
+// ═══════════════════════════════════════════════════
+// STATE PLANT
+// ═══════════════════════════════════════════════════
+let D_c=[1,6,8,0], N_c=[1], K_MAX=100, K_STEP=0.5;
+let K_VALS=[], locusData=[], viewBounds={rMin:-9,rMax:2,iMax:6};
+
+const PRESETS=[
+  {poles:[-2],             zeros:[],  kmax:30},
+  {poles:[-1,-3],          zeros:[],  kmax:80},
+  {poles:[0,-2,-4],        zeros:[],  kmax:100},
+  {poles:[0,-1,-5],        zeros:[],  kmax:60},
+  {poles:[0,-3,-6],        zeros:[-1],kmax:200},
+  {poles:[0,0,-5],         zeros:[],  kmax:50},
+  {poles:[0,-1,-2,-4],     zeros:[],  kmax:80},
+  null  // custom
+];
+
+function loadPreset(){
+  const idx=parseInt(document.getElementById('presetSel').value);
+  const p=PRESETS[idx];
+  if(!p) return;
+  document.getElementById('polesIn').value=p.poles.join(', ');
+  document.getElementById('zerosIn').value=p.zeros.join(', ');
+  document.getElementById('kmaxIn').value=p.kmax;
+  applyPlant();
+}
+
+function parseNums(str){
+  if(!str||!str.trim()) return [];
+  return str.split(',').map(s=>parseFloat(s.trim())).filter(v=>!isNaN(v));
+}
+
+function fmtFactor(p){
+  // faktor (s - p) dalam tampilan
+  if(Math.abs(p)<0.001) return 's';
+  const sign=p<0?'+':'−';
+  const abs=Math.abs(p);
+  const s=Number.isInteger(abs)?abs.toFixed(0):abs.toFixed(2);
+  return `(s${sign}${s})`;
+}
+
+function buildFormula(poles,zeros){
+  const den=poles.map(p=>fmtFactor(-p)).join('');
+  const num=zeros.length===0?'K':`K·${zeros.map(z=>fmtFactor(-z)).join('')}`;
+  return `G(s) = ${num} / [${den}]`;
+}
+
+function applyPlant(){
+  const poles=parseNums(document.getElementById('polesIn').value);
+  const zeros=parseNums(document.getElementById('zerosIn').value);
+  const kmax=parseFloat(document.getElementById('kmaxIn').value)||100;
+  if(poles.length===0){alert('Masukkan minimal 1 pole!');return;}
+  if(zeros.length>=poles.length){alert('Jumlah zeros harus lebih sedikit dari poles!');return;}
+
+  D_c=polyFromRoots(poles);
+  N_c=zeros.length>0?polyFromRoots(zeros):[1];
+  K_MAX=kmax;
+  K_STEP=K_MAX/160;
+  K_VALS=Array.from({length:161},(_,i)=>i*K_STEP);
+
+  document.getElementById('formulaDisplay').textContent=buildFormula(poles,zeros);
+
+  computeLocus();
+  computeViewBounds();
+
+  const sl=document.getElementById('kSlider');
+  sl.max=K_MAX;
+  sl.step=Math.max(0.1,K_MAX/200);
+  let curK=parseFloat(sl.value);
+  if(curK>K_MAX) curK=K_MAX*0.1;
+  sl.value=curK;
+  document.getElementById('kDisplay').textContent=curK.toFixed(1);
+  update(curK);
+}
+
+// ═══════════════════════════════════════════════════
+// KOMPUTASI TEMPAT KEDUDUKAN AKAR
+// ═══════════════════════════════════════════════════
+function matchRoots(nr,pr){
+  const used=new Set();
+  return pr.map(p=>{
+    let md=Infinity,mi=0;
+    nr.forEach((r,j)=>{
+      if(!used.has(j)){const d=C.abs(C.sub(r,p));if(d<md){md=d;mi=j;}}
+    });
+    used.add(mi);
+    return nr[mi];
+  });
+}
+
+function computeLocus(){
+  locusData=[];
+  for(let i=0;i<K_VALS.length;i++){
+    const K=Math.max(K_VALS[i],1e-4);
+    const cc=charPolyCoeffs(K,D_c,N_c);
+    const roots=findRoots(cc);
+    if(i===0){roots.sort((a,b)=>b.re-a.re);locusData.push(roots);}
+    else locusData.push(matchRoots(roots,locusData[i-1]));
+  }
+}
+
+function computeViewBounds(){
+  let rMin=Infinity,rMax=-Infinity,iMax=0;
+  locusData.forEach(rs=>rs.forEach(r=>{
+    if(isFinite(r.re)&&Math.abs(r.re)<500){rMin=Math.min(rMin,r.re);rMax=Math.max(rMax,r.re);}
+    if(isFinite(r.im)&&Math.abs(r.im)<500) iMax=Math.max(iMax,Math.abs(r.im));
+  }));
+  if(!isFinite(rMin)) rMin=-4;
+  if(!isFinite(rMax)) rMax=1;
+  const rng=Math.max(rMax-rMin,1);
+  viewBounds={rMin:rMin-rng*.12,rMax:rMax+rng*.12,iMax:Math.max(iMax*1.15,1.5)};
+}
+
+// ═══════════════════════════════════════════════════
+// SIMULASI RESPONS TANGGA (RK4 — State Space Umum)
+// ═══════════════════════════════════════════════════
+function stepSim(K,tEnd,dt){
+  const n=D_c.length-1;
+  const m=N_c.length-1;
+  const cc=charPolyCoeffs(K,D_c,N_c);
+  const a=cc.slice(1); // koefisien setelah leading [c1,...,cn]
+
+  // Koefisien output: y = K * sum_{j=0}^{m} N_c[m-j]*state[j]
+  const Cout=new Array(n).fill(0);
+  for(let j=0;j<=m;j++) Cout[j]=K*N_c[m-j];
+
+  const ns=Math.ceil(tEnd/dt);
+  const t=new Float64Array(ns+1),y=new Float64Array(ns+1);
+  let z=new Float64Array(n);
+
+  const drv=z=>{
+    const dz=new Float64Array(n);
+    for(let i=0;i<n-1;i++) dz[i]=z[i+1];
+    let last=1;
+    for(let i=0;i<n;i++) last-=a[n-1-i]*z[i];
+    dz[n-1]=last;
+    return dz;
+  };
+
+  for(let i=0;i<=ns;i++){
+    t[i]=i*dt;
+    let yi=0; for(let j=0;j<n;j++) yi+=Cout[j]*z[j];
+    y[i]=yi;
+    const k1=drv(z);
+    const k2=drv(z.map((v,j)=>v+dt/2*k1[j]));
+    const k3=drv(z.map((v,j)=>v+dt/2*k2[j]));
+    const k4=drv(z.map((v,j)=>v+dt*k3[j]));
+    for(let j=0;j<n;j++) z[j]+=dt/6*(k1[j]+2*k2[j]+2*k3[j]+k4[j]);
+    if(!isFinite(z[0])||Math.abs(z[0])>300)
+      for(let j=0;j<n;j++) z[j]=isFinite(z[j])?Math.sign(z[j])*Math.min(Math.abs(z[j]),300):0;
+  }
+  return{t,y};
+}
+
+// ═══════════════════════════════════════════════════
+// UTILITAS GAMBAR
+// ═══════════════════════════════════════════════════
+const BG='#070e16',GRID='#0d1b29',AXIS='#1c3750';
+const COL=['#16a37a','#2980b9','#c08010','#8e44ad','#c0392b','#1a7a8c'];
+const GRN='#16a37a',RED='#c0392b',GRY='#4a6878';
+
+function niceStep(rough){
+  if(rough<=0) return 1;
+  const mag=Math.pow(10,Math.floor(Math.log10(rough)));
+  const r=rough/mag;
+  if(r<1.5) return mag;
+  if(r<3.5) return 2*mag;
+  if(r<7.5) return 5*mag;
+  return 10*mag;
+}
+
+function fmt(v){
+  if(Math.abs(v)<1e-9) return '0';
+  const a=Math.abs(v);
+  if(a>=100) return v.toFixed(0);
+  if(a>=10)  return v.toFixed(1);
+  if(a>=1)   return v.toFixed(2);
+  return v.toFixed(2);
+}
+
+function sPt(re,im,c){
+  return{
+    x:c.ml+(re-c.rMin)/(c.rMax-c.rMin)*c.pw,
+    y:c.mt+(1-(im-c.iMin)/(c.iMax-c.iMin))*c.ph
+  };
+}
+
+// ═══════════════════════════════════════════════════
+// GAMBAR S-PLANE
+// ═══════════════════════════════════════════════════
+function drawS(kIdx){
+  const cv=document.getElementById('splane');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const ml=42,mr=12,mt=14,mb=26;
+  const pw=W-ml-mr,ph=H-mt-mb;
+  const c={rMin:viewBounds.rMin,rMax:viewBounds.rMax,iMin:-viewBounds.iMax,iMax:viewBounds.iMax,ml,mt,pw,ph};
+
+  ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+
+  const ox=sPt(0,0,c);
+  ctx.fillStyle='rgba(22,163,122,0.045)';ctx.fillRect(ml,mt,ox.x-ml,ph);
+  ctx.fillStyle='rgba(192,57,43,0.045)';ctx.fillRect(ox.x,mt,W-mr-ox.x,ph);
+
+  const rRng=c.rMax-c.rMin,iRng=c.iMax-c.iMin;
+  const rs=niceStep(rRng/4.5),is_=niceStep(iRng/4.5);
+
+  ctx.strokeStyle=GRID;ctx.lineWidth=1;
+  for(let r=Math.ceil(c.rMin/rs)*rs;r<=c.rMax+rs*.01;r+=rs){
+    if(Math.abs(r)<rs*.01) continue;
+    const p=sPt(r,0,c);
+    ctx.beginPath();ctx.moveTo(p.x,mt);ctx.lineTo(p.x,mt+ph);ctx.stroke();
+  }
+  for(let im=Math.ceil(c.iMin/is_)*is_;im<=c.iMax+is_*.01;im+=is_){
+    if(Math.abs(im)<is_*.01) continue;
+    const p=sPt(0,im,c);
+    ctx.beginPath();ctx.moveTo(ml,p.y);ctx.lineTo(ml+pw,p.y);ctx.stroke();
+  }
+
+  ctx.strokeStyle=AXIS;ctx.lineWidth=1.5;
+  const ra=sPt(c.rMin,0,c),rb=sPt(c.rMax,0,c);
+  ctx.beginPath();ctx.moveTo(ra.x,ra.y);ctx.lineTo(rb.x,rb.y);ctx.stroke();
+
+  // Batas stabilitas
+  ctx.strokeStyle='rgba(22,163,122,0.42)';ctx.lineWidth=1.5;ctx.setLineDash([5,5]);
+  const ia=sPt(0,c.iMin,c),ib=sPt(0,c.iMax,c);
+  ctx.beginPath();ctx.moveTo(ia.x,ia.y);ctx.lineTo(ib.x,ib.y);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Asimtot
+  const n=D_c.length-1,m=N_c.length-1,excess=n-m;
+  if(excess>0){
+    // Sentroid: (Σpoles - Σzeros) / excess
+    const sump=-D_c[1]/D_c[0];
+    const sumz=N_c.length>1?-N_c[1]/N_c[0]:0;
+    const ctr=(sump-sumz)/excess;
+    ctx.strokeStyle='rgba(120,90,200,0.22)';ctx.lineWidth=1;ctx.setLineDash([3,7]);
+    for(let k=0;k<excess;k++){
+      const ang=(2*k+1)*Math.PI/excess;
+      const p0=sPt(ctr,0,c),p1=sPt(ctr+25*Math.cos(ang),25*Math.sin(ang),c);
+      ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // Garis locus untuk setiap cabang
+  const nb=D_c.length-1;
+  for(let b=0;b<nb;b++){
+    ctx.strokeStyle=COL[b%COL.length];ctx.lineWidth=1.5;ctx.globalAlpha=.62;
+    ctx.beginPath();let first=true;
+    for(let i=0;i<locusData.length;i++){
+      if(b>=locusData[i].length) continue;
+      const r=locusData[i][b];
+      const p=sPt(r.re,r.im,c);
+      if(!isFinite(p.x)||!isFinite(p.y)||p.x<-50||p.x>W+50||p.y<-50||p.y>H+50){first=true;continue;}
+      if(first){ctx.moveTo(p.x,p.y);first=false;}else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+
+  // Kutub terbuka ×
+  ctx.strokeStyle='rgba(74,104,120,0.8)';ctx.lineWidth=2;
+  if(locusData.length>0) locusData[0].forEach(r=>{
+    const p=sPt(r.re,r.im,c);
+    if(!isFinite(p.x)||!isFinite(p.y)) return;
+    const s=7;
+    ctx.beginPath();ctx.moveTo(p.x-s,p.y-s);ctx.lineTo(p.x+s,p.y+s);ctx.moveTo(p.x+s,p.y-s);ctx.lineTo(p.x-s,p.y+s);ctx.stroke();
+  });
+
+  // Nol terbuka ○
+  if(N_c.length>1){
+    const zr=findRoots(N_c);
+    ctx.strokeStyle='rgba(41,128,185,0.7)';ctx.lineWidth=2;
+    zr.forEach(r=>{
+      const p=sPt(r.re,r.im,c);
+      if(!isFinite(p.x)||!isFinite(p.y)) return;
+      ctx.beginPath();ctx.arc(p.x,p.y,7,0,2*Math.PI);ctx.stroke();
+    });
+  }
+
+  // Kutub aktif ●
+  if(locusData[kIdx]) locusData[kIdx].forEach((r,b)=>{
+    const p=sPt(r.re,r.im,c);
+    if(!isFinite(p.x)||!isFinite(p.y)) return;
+    const col=r.re>=0?RED:COL[b%COL.length];
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.fill();
+    ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.stroke();
+  });
+
+  // Label sumbu
+  ctx.fillStyle=GRY;ctx.font='10px monospace';ctx.textAlign='center';
+  for(let r=Math.ceil(c.rMin/rs)*rs;r<=c.rMax+rs*.01;r+=rs){
+    if(Math.abs(r)<rs*.01) continue;
+    ctx.fillText(fmt(r),sPt(r,0,c).x,mt+ph+17);
+  }
+  ctx.textAlign='right';
+  for(let im=Math.ceil(c.iMin/is_)*is_;im<=c.iMax+is_*.01;im+=is_){
+    if(Math.abs(im)<is_*.01) continue;
+    const p=sPt(0,im,c);
+    ctx.fillText(fmt(im)+'j',ml-4,p.y+4);
+  }
+  ctx.fillStyle='rgba(74,104,120,0.5)';ctx.font='9px monospace';
+  ctx.textAlign='center';
+  ctx.fillText('← STABIL',ml+36,mt+12);
+  ctx.fillText('TIDAK STABIL →',W-mr-46,mt+12);
+  ctx.textAlign='right';ctx.fillText('Re(s)',ml+pw-2,ox.y-5);
+  ctx.textAlign='left';ctx.fillText('Im(s)',ml+3,mt+12);
+}
+
+// ═══════════════════════════════════════════════════
+// GAMBAR RESPONS TANGGA
+// ═══════════════════════════════════════════════════
+function drawStep(K,isStable,kIdx){
+  const cv=document.getElementById('stepcanvas');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const ml=44,mr=12,mt=14,mb=26;
+  const pw=W-ml-mr,ph=H-mt-mb;
+
+  ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+
+  const roots=locusData[kIdx]||[];
+  let tEnd,dt;
+  if(isStable){
+    const mRe=Math.min(...roots.map(r=>Math.abs(r.re)).filter(v=>v>0.02));
+    tEnd=Math.min(Math.max(6,5.5/mRe),70);dt=tEnd/600;
+  }else{tEnd=5;dt=0.005;}
+
+  const{t,y}=stepSim(K<0.01?0.01:K,tEnd,dt);
+  const yArr=Array.from(y);
+  const yss=dcGain(K,D_c,N_c);
+
+  let yMin=0,yMax=Math.max(1.5,yss*1.2);
+  const yMx=Math.max(...yArr.filter(isFinite));
+  const yMn=Math.min(...yArr.filter(isFinite));
+  if(yMx>yMax) yMax=Math.min(yMx*1.1,12);
+  if(yMn<yMin) yMin=Math.max(yMn*1.1,-3);
+
+  const tx=v=>ml+(v/tEnd)*pw;
+  const ty=v=>mt+(1-(v-yMin)/(yMax-yMin))*ph;
+  const ys=niceStep((yMax-yMin)/4.5);
+
+  ctx.strokeStyle=GRID;ctx.lineWidth=1;
+  for(let v=Math.ceil(yMin/ys)*ys;v<=yMax+ys*.01;v+=ys){
+    ctx.beginPath();ctx.moveTo(ml,ty(v));ctx.lineTo(ml+pw,ty(v));ctx.stroke();
+  }
+
+  // Garis steady-state
+  if(isStable&&ty(yss)>mt-5&&ty(yss)<mt+ph+5){
+    ctx.strokeStyle='rgba(22,163,122,0.35)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(ml,ty(yss));ctx.lineTo(ml+pw,ty(yss));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(22,163,122,0.55)';ctx.font='9px monospace';ctx.textAlign='right';
+    const yssLabel=`y∞=${fmt(yss)}`;
+    if(ty(yss)>mt+10) ctx.fillText(yssLabel,ml+pw-3,ty(yss)-3);
+  }
+
+  ctx.strokeStyle=AXIS;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,mt+ph);ctx.lineTo(ml+pw,mt+ph);ctx.stroke();
+
+  const col=isStable?GRN:RED;
+  ctx.strokeStyle=col;ctx.lineWidth=2;
+  ctx.beginPath();let first=true;
+  for(let i=0;i<t.length;i++){
+    const px=tx(t[i]),py=ty(y[i]);
+    if(!isFinite(py)||py<mt-100||py>mt+ph+100){first=true;continue;}
+    if(first){ctx.moveTo(px,py);first=false;}else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle=GRY;ctx.font='10px monospace';ctx.textAlign='center';
+  for(let i=0;i<=5;i++){const tv=tEnd*i/5;ctx.fillText(fmt(tv),tx(tv),mt+ph+17);}
+  ctx.textAlign='right';
+  for(let v=Math.ceil(yMin/ys)*ys;v<=yMax+ys*.01;v+=ys){
+    const py=ty(v);if(py<mt+6||py>mt+ph-6) continue;
+    ctx.fillText(fmt(v),ml-4,py+4);
+  }
+  ctx.fillStyle='rgba(74,104,120,0.45)';ctx.font='9px monospace';
+  ctx.textAlign='center';ctx.fillText('t (detik)',ml+pw/2,mt+ph+25);
+  ctx.save();ctx.translate(11,mt+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('amplitudo',0,0);ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════
+// UPDATE UI
+// ═══════════════════════════════════════════════════
+function getNarrative(K,isStable,zeta,yss){
+  if(!isStable) return`K = ${K.toFixed(1)} telah melampaui nilai kritis. Semua atau sebagian kutub masuk ke RHP — sistem tidak stabil, respons divergen.`;
+  if(K<0.5) return`K sangat kecil. Kutub-kutub hampir di posisi awal (K=0). Sistem sangat lamban merespons.`;
+  const typeZero=Math.abs(yss-1)>0.05;
+  const suffix=typeZero?` Sistem ini bertipe-0: nilai akhir y∞ ≈ ${fmt(yss)} ≠ 1 (ada kesalahan steady-state).`:'';
+  if(zeta!==null&&zeta>0.7) return`Respons terdamping kritis atau overdamped (ζ ≈ ${zeta.toFixed(2)}). Sistem stabil dan halus, tanpa overshoot berarti.${suffix}`;
+  if(zeta!==null&&zeta>0.35) return`Respons underdamped dengan overshoot (ζ ≈ ${zeta.toFixed(2)}). Masih stabil dan cukup cepat — zona yang sering dipilih dalam desain.${suffix}`;
+  if(zeta!==null&&zeta<0.2) return`Underdamped kuat (ζ ≈ ${zeta.toFixed(2)}). Osilasi panjang sebelum stabil — pertimbangkan untuk turunkan K.${suffix}`;
+  return`Sistem stabil. Amati pergerakan kutub dan perubahan bentuk respons tangga seiring perubahan K.${suffix}`;
+}
+
+function update(K){
+  const kIdx=Math.min(Math.round(K/K_STEP),locusData.length-1);
+  if(kIdx<0||!locusData[kIdx]) return;
+  const roots=locusData[kIdx];
+  const isStable=roots.every(r=>r.re<0);
+  let zeta=null,omN=null;
+  roots.forEach(r=>{
+    if(Math.abs(r.im)>0.05&&r.im>0){
+      const sg=-r.re,od=Math.abs(r.im);
+      omN=Math.sqrt(sg*sg+od*od);zeta=sg/omN;
+    }
+  });
+  const yss=dcGain(K,D_c,N_c);
+
+  drawS(kIdx);
+  drawStep(K,isStable,kIdx);
+
+  const nar=document.getElementById('narrative');
+  nar.textContent=getNarrative(K,isStable,zeta,yss);
+  nar.style.borderLeftColor=!isStable?RED:'#16a37a';
+  nar.style.color=!isStable?'#e74c3c':'#80b898';
+  nar.style.background=!isStable?'rgba(192,57,43,0.06)':'rgba(22,163,122,0.05)';
+
+  let chips='';
+  chips+=isStable?`<span class="chip c-ok">Stabil</span>`:`<span class="chip c-bad">Tidak stabil</span>`;
+  if(zeta!==null){
+    chips+=`<span class="chip c-info">ζ = ${zeta.toFixed(3)}</span>`;
+    chips+=`<span class="chip c-info">ω_n = ${omN.toFixed(2)} rad/s</span>`;
+    if(zeta<0.7) chips+=`<span class="chip c-warn">OS ≈ ${(100*Math.exp(-Math.PI*zeta/Math.sqrt(1-zeta*zeta))).toFixed(0)}%</span>`;
+  }
+  if(!isStable||Math.abs(yss-1)>0.05)
+    chips+=`<span class="chip c-info">y∞ = ${fmt(yss)}</span>`;
+  document.getElementById('statusBar').innerHTML=chips;
+
+  document.getElementById('polesGrid').innerHTML=roots.map((r,i)=>{
+    const u=r.re>=0;
+    const v=Math.abs(r.im)<0.005?r.re.toFixed(4):`${r.re.toFixed(3)} ${r.im>=0?'+':'−'} ${Math.abs(r.im).toFixed(3)}j`;
+    return`<div class="pcard"><div class="plbl">Kutub ${i+1}</div><div class="pval ${u?'p-bad':'p-ok'}">${v}</div></div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// INISIALISASI
+// ═══════════════════════════════════════════════════
+K_VALS=Array.from({length:161},(_,i)=>i*K_STEP);
+applyPlant();
+
+document.getElementById('kSlider').addEventListener('input',function(){
+  const K=parseFloat(this.value);
+  document.getElementById('kDisplay').textContent=K.toFixed(1);
+  update(K);
+});
+</script>
+</body>
+</html>
