@@ -1,0 +1,518 @@
+
+<h2 class="sr-only">Simulasi root locus — desain sistem kontrol dengan gain K dan kompensator lead</h2>
+<style>
+.card{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem;margin-bottom:12px}
+.sec{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px}
+.tab{padding:6px 14px;border-radius:var(--border-radius-md);border:.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);cursor:pointer;font-size:13px}
+.tab.on{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info);font-weight:500}
+.met{text-align:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:6px 9px;min-width:54px}
+.mv{font-size:14px;font-weight:500;font-family:var(--font-mono);line-height:1.2}
+.ml{font-size:10px;color:var(--color-text-secondary)}
+.sr{margin-bottom:9px}
+.sh{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.sv{font-family:var(--font-mono);color:var(--color-text-info);font-weight:500}
+.tf{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:7px 10px;border-radius:var(--border-radius-md);line-height:1.9}
+#pp>div{display:none}#pp>div.vis{display:flex;flex-wrap:wrap;gap:16px}
+</style>
+
+<div class="card">
+<p class="sec">Plant</p>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">
+  <div style="flex:1 1 120px">
+    <label style="font-size:11px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Kelompok</label>
+    <select id="ps" style="display:block;width:100%"></select>
+  </div>
+  <div style="flex:2 1 190px">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">G(s)</div>
+    <div id="pl" class="tf" style="font-size:13px"></div>
+  </div>
+  <div style="flex:1 1 150px">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">Spesifikasi</div>
+    <div id="sb" style="background:var(--color-background-warning);color:var(--color-text-warning);font-size:12px;padding:6px 8px;border-radius:var(--border-radius-md)"></div>
+  </div>
+  <div style="flex:1 1 140px">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">Pole OL</div>
+    <div id="pol" style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary)"></div>
+  </div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+<div class="card" style="margin-bottom:0;min-width:0">
+  <p class="sec">Root locus — bidang-s</p>
+  <div id="spwrap" style="width:100%;height:310px;position:relative">
+    <canvas id="sp" style="position:absolute;top:0;left:0;background:var(--color-background-secondary);border-radius:var(--border-radius-md)" role="img" aria-label="Root locus plot showing closed-loop pole trajectories in the complex s-plane as gain K varies"></canvas>
+  </div>
+  <div style="margin-top:8px">
+    <div style="font-size:11px;color:var(--color-text-secondary);display:flex;gap:12px;margin-bottom:6px;flex-wrap:wrap">
+      <span><b style="color:#E24B4A">×</b> Pole OL</span>
+      <span><b style="color:#378ADD">○</b> Zero OL</span>
+      <span><b style="color:#22C55E">●</b> Pole CL</span>
+      <span style="color:#22C55E">▦ Daerah spec</span>
+      <span style="color:rgba(128,128,128,.6)">-- Asimtot</span>
+    </div>
+    <div class="sr"><div class="sh"><span>Penguatan K</span><span class="sv" id="vK">1.00</span></div><input type="range" id="slK" min="0.01" max="200" step="0.01" value="1"></div>
+    <div id="sm" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
+</div>
+<div class="card" style="margin-bottom:0;min-width:0">
+  <p class="sec">Step response — closed-loop</p>
+  <div id="stm" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+  <div style="position:relative;height:250px"><canvas id="sc" role="img" aria-label="Closed-loop step response plot showing output over time"></canvas></div>
+  <div style="font-size:11px;display:flex;gap:12px;margin-top:6px;color:var(--color-text-secondary)">
+    <span><span style="color:#888">—</span> Tanpa ctrl</span>
+    <span><span style="color:#2563EB">—</span> Dengan ctrl</span>
+    <span><span style="color:#E24B4A">- -</span> Ref</span>
+  </div>
+</div>
+</div>
+
+<div class="card">
+<p class="sec">Desain kompensator via root locus</p>
+<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
+  <button class="tab on" data-c="none">Hanya gain K</button>
+  <button class="tab" data-c="lead">Lead Gc(s) — metode sudut</button>
+</div>
+<div id="pp">
+  <div id="pp-none" class="vis" style="font-size:13px;color:var(--color-text-secondary);padding:4px 0">
+    Geser K → pole CL (●) bergerak di sepanjang locus. Daerah hijau = ζ dan ts terpenuhi. Pilih K agar pole CL masuk ke daerah hijau.
+  </div>
+  <div id="pp-lead">
+    <div style="flex:1 1 190px">
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Tentukan pole dominan s<sub>d</sub></div>
+      <div class="sr"><div class="sh"><span>ζ target</span><span class="sv" id="vZd">0.59</span></div><input type="range" id="slZd" min="0.1" max="0.95" step="0.01" value="0.59"></div>
+      <div class="sr"><div class="sh"><span>ωn target (rad/s)</span><span class="sv" id="vWn">3.0</span></div><input type="range" id="slWn" min="0.3" max="15" step="0.1" value="3.0"></div>
+      <div style="font-size:11px;color:var(--color-text-secondary)">s<sub>d</sub> = <span id="sd" style="font-family:var(--font-mono);color:var(--color-text-info)"></span></div>
+    </div>
+    <div style="flex:1 1 160px">
+      <button id="bLD" style="width:100%;padding:8px;margin-bottom:8px"><i class="ti ti-bolt" aria-hidden="true"></i> Auto-design (metode sudut)</button>
+      <div id="li" class="tf" style="font-size:11px;line-height:2"></div>
+    </div>
+    <div style="flex:1 1 155px">
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Fine-tune manual</div>
+      <div class="sr"><div class="sh"><span>α (>1)</span><span class="sv" id="vAl">5.0</span></div><input type="range" id="slAl" min="1.1" max="30" step="0.1" value="5"></div>
+      <div class="sr"><div class="sh"><span>T (s)</span><span class="sv" id="vT">0.300</span></div><input type="range" id="slT" min="0.001" max="5" step="0.001" value="0.3"></div>
+      <div id="ltf" class="tf" style="font-size:10px;margin-top:4px"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div style="background:var(--color-background-info);border:.5px solid var(--color-border-info);border-radius:var(--border-radius-lg);padding:10px 14px;font-size:12px;color:var(--color-text-info)">
+  <i class="ti ti-info-circle" aria-hidden="true"></i>
+  <b>Root locus:</b> lintasan pole CL saat K: 0→∞. Daerah hijau = ζ dan ts memenuhi spesifikasi.
+  <b>Metode sudut:</b> pilih s<sub>d</sub> → hitung kekurangan sudut ∠G(s<sub>d</sub>) → desain zero &amp; pole Gc geometris → K dari kondisi besar |K·Gc·G(s<sub>d</sub>)|=1.
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── POLYNOMIAL MATH ──────────────────────────────────────────────────────────
+const pEC=(c,re,im)=>{let rr=0,ri=0;for(const v of c){[rr,ri]=[rr*re-ri*im+v,rr*im+ri*re];}return[rr,ri];};
+const pMul=(a,b)=>{const r=new Array(a.length+b.length-1).fill(0);a.forEach((ai,i)=>b.forEach((bj,j)=>{r[i+j]+=ai*bj;}));return r;};
+const pAdd=(a,b)=>{const n=Math.max(a.length,b.length),pa=[...Array(n-a.length).fill(0),...a],pb=[...Array(n-b.length).fill(0),...b];return pa.map((v,i)=>v+pb[i]);};
+
+// Durand-Kerner root finder
+function dk(c){
+  const n=c.length-1;
+  if(n<=0)return[];
+  if(n===1)return[[-c[1]/c[0],0]];
+  const a=c.map(v=>v/c[0]);
+  let p=Array.from({length:n},(_,k)=>{const t=2*Math.PI*k/n+.4;return[.7*Math.cos(t),.7*Math.sin(t)];});
+  for(let it=0;it<150;it++){
+    p=p.map((pi,i)=>{
+      const[fr,fi]=pEC(a,pi[0],pi[1]);
+      let dr=1,di=0;
+      for(let j=0;j<n;j++){
+        if(j===i)continue;
+        const rr=pi[0]-p[j][0],ri_=pi[1]-p[j][1];
+        [dr,di]=[dr*rr-di*ri_,dr*ri_+di*rr];
+      }
+      const d=dr*dr+di*di;
+      if(d<1e-30)return pi;
+      return[pi[0]-(fr*dr+fi*di)/d,pi[1]-(fi*dr-fr*di)/d];
+    });
+  }
+  return p;
+}
+
+// Match root branches between consecutive K steps
+function mbr(prev,curr){
+  const used=new Set(),m=[];
+  for(let i=0;i<prev.length;i++){
+    let md=Infinity,mj=-1;
+    for(let j=0;j<curr.length;j++){
+      if(used.has(j))continue;
+      const d=Math.hypot(curr[j][0]-prev[i][0],curr[j][1]-prev[i][1]);
+      if(d<md){md=d;mj=j;}
+    }
+    m.push(curr[mj]||[0,0]);
+    used.add(mj);
+  }
+  return m;
+}
+
+// Compute root locus branches for array of K values
+function compRL(num,den,Ks){
+  const n=den.length-1,br=Array.from({length:n},()=>[]);
+  let prev=null;
+  for(const K of Ks){
+    const cp=pAdd(den,num.map(c=>c*Math.max(K,1e-8)));
+    let rts=dk(cp);
+    if(prev)rts=mbr(prev,rts);
+    prev=rts;
+    for(let i=0;i<n;i++)br[i].push(rts[i]||[0,0]);
+  }
+  return br;
+}
+
+// Asymptotes
+function compAsym(num,den){
+  const n=den.length-1,m=num.length-1,na=n-m;
+  if(na<=0)return{a:[],c:0};
+  const poles=dk(den),zeros=m>0?dk(num):[];
+  const c=(poles.reduce((s,p)=>s+p[0],0)-zeros.reduce((s,z)=>s+z[0],0))/na;
+  return{a:Array.from({length:na},(_,k)=>(2*k+1)*180/na),c};
+}
+
+// Step response via state space + RK4
+function stepR(num,den,T,N){
+  const d0=den[0];if(!d0)return[];
+  const a=den.map(c=>c/d0),br=num.map(c=>c/d0);
+  const n=a.length-1;
+  if(n<=0)return Array.from({length:N+1},(_,i)=>({x:T*i/N,y:br[0]||0}));
+  const b=[...Array(n+1-br.length).fill(0),...br],D=b[0];
+  const Cv=b.slice(1).map((bi,i)=>bi-D*a[i+1]);
+  const dt=T/N;
+  const f=x=>{const dx=Array(n).fill(0);for(let i=0;i<n-1;i++)dx[i]=x[i+1];let last=1;for(let i=0;i<n;i++)last-=a[n-i]*x[i];dx[n-1]=last;return dx;};
+  const rk4=x=>{const k1=f(x),k2=f(x.map((v,i)=>v+dt/2*k1[i])),k3=f(x.map((v,i)=>v+dt/2*k2[i])),k4=f(x.map((v,i)=>v+dt*k3[i]));return x.map((v,i)=>v+dt/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]));};
+  let x=Array(n).fill(0);const data=[];
+  for(let i=0;i<=N;i++){const y=Cv.reduce((s,ci,idx)=>s+ci*x[idx],0)+D;data.push({x:+(i*dt).toFixed(3),y:isFinite(y)?+y.toFixed(5):0});if(i<N)x=rk4(x);}
+  return data;
+}
+
+// Step response metrics
+function sMet(d){
+  if(!d||d.length<20)return{os:0,ts:0,yss:0};
+  const yss=d.slice(-Math.max(1,~~(d.length*.1))).reduce((s,v)=>s+v.y,0)/Math.max(1,~~(d.length*.1));
+  const ymax=Math.max(...d.map(v=>v.y));
+  const os=Math.abs(yss)>.005?Math.max(0,100*(ymax-yss)/yss):0;
+  let ts=d[d.length-1].x;const band=.02*Math.abs(yss);
+  for(let i=d.length-1;i>=0;i--){if(Math.abs(d[i].y-yss)>band){ts=d[Math.min(i+1,d.length-1)].x;break;}}
+  return{yss:+yss.toFixed(4),os:+os.toFixed(1),ts:+ts.toFixed(2)};
+}
+
+// Lead compensator via angle method
+function leadDes(num,den,zd,wnd){
+  const sr=-zd*wnd,si=wnd*Math.sqrt(Math.max(0,1-zd*zd));
+  const[nr,ni]=pEC(num,sr,si),[dr,di]=pEC(den,sr,si);
+  let ang=(Math.atan2(ni,nr)-Math.atan2(di,dr))*180/Math.PI;
+  while(ang>180)ang-=360;while(ang<-180)ang+=360;
+  let phi=-180-ang;while(phi>180)phi-=360;while(phi<-180)phi+=360;if(phi<0)phi+=360;
+  const zc=Math.abs(sr)*.75||1;
+  const psiZ=Math.atan2(si,sr+zc)*180/Math.PI;
+  const psiP=psiZ-phi;
+  let pc=Math.abs(Math.tan(psiP*Math.PI/180))<1e-8?zc*5:si/Math.tan(psiP*Math.PI/180)-sr;
+  if(!isFinite(pc)||pc<=zc)pc=zc*4;
+  const dg=dr*dr+di*di,gr=(nr*dr+ni*di)/dg,gi=(ni*dr-nr*di)/dg;
+  const d2=(sr+pc)*(sr+pc)+si*si;
+  const gcr=((sr+zc)*(sr+pc)+si*si)/d2,gci=(si*(sr+pc)-si*(sr+zc))/d2;
+  const Lr=gcr*gr-gci*gi,Li=gcr*gi+gci*gr;
+  const K=1/Math.hypot(Lr,Li);
+  return{sr,si,zc,pc,K:+K.toFixed(4),T:+(1/pc).toFixed(5),alpha:+(pc/zc).toFixed(2),phi:+phi.toFixed(1)};
+}
+
+// ── PLANTS ───────────────────────────────────────────────────────────────────
+const PL=[
+  {id:1,num:[10],den:[1,6,5],lbl:"10/[(s+1)(s+5)]",spec:"OS≤10%, ts≤2 s",sp:{os:10,ts:2}},
+  {id:2,num:[20],den:[1,4,0],lbl:"20/[s(s+4)]",spec:"OS≤15%, ts≤3 s",sp:{os:15,ts:3}},
+  {id:3,num:[8],den:[1,9,20,12],lbl:"8/[(s+1)(s+2)(s+6)]",spec:"OS≤20%, ts≤4 s",sp:{os:20,ts:4}},
+  {id:4,num:[15],den:[1,10,21,0],lbl:"15/[s(s+3)(s+7)]",spec:"OS≤10%, ts≤2.5 s",sp:{os:10,ts:2.5}},
+  {id:5,num:[5,10],den:[1,7,16,10],lbl:"5(s+2)/[(s+1)(s²+6s+10)]",spec:"OS≤5%, ts≤3 s",sp:{os:5,ts:3}},
+  {id:6,num:[12],den:[1,6,21,26],lbl:"12/[(s+2)(s²+4s+13)]",spec:"OS≤20%, ts≤5 s",sp:{os:20,ts:5}},
+  {id:7,num:[6],den:[1,2,5,0],lbl:"6/[s(s²+2s+5)]",spec:"OS≤15%, ts≤4 s",sp:{os:15,ts:4}},
+  {id:8,num:[25],den:[1,6,16,26,15],lbl:"25/[(s+1)(s+3)(s²+2s+5)]",spec:"OS≤10%, ts≤5 s",sp:{os:10,ts:5}},
+];
+document.getElementById('ps').innerHTML=PL.map((p,i)=>`<option value="${i}">Kelompok ${p.id}</option>`).join('');
+document.getElementById('ps').value=2;
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const S={pi:2,ctrl:'none',K:1,al:5,T:.3,zd:.59,wnd:3,rld:null,ldi:null};
+
+// ── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const cv=document.getElementById('sp'),cx=cv.getContext('2d');
+let V={xl:-12,xr:4,yl:-10,yr:10};
+
+// Convert s-plane coords → canvas pixels (1:1, NO DPR scaling)
+const toPx=(re,im)=>[(re-V.xl)/(V.xr-V.xl)*cv.width,(1-(im-V.yl)/(V.yr-V.yl))*cv.height];
+
+function setV(rp,rz){
+  const pts=[...rp,...rz].filter(r=>isFinite(r[0])&&isFinite(r[1])&&Math.abs(r[0])<1e4&&Math.abs(r[1])<1e4);
+  const mr=Math.max(8,...pts.map(r=>Math.abs(r[0])*2),...pts.map(r=>Math.abs(r[1])*1.6));
+  const sg=pts.length?pts.reduce((s,r)=>s+r[0],0)/pts.length:0;
+  V={xl:Math.min(-3,sg-mr),xr:Math.max(2,mr*.28),yl:-mr,yr:mr};
+}
+
+function rsz(){
+  // Read parent wrapper width (avoids layout timing issues)
+  const wrap=document.getElementById('spwrap');
+  const w=wrap.offsetWidth||360;
+  cv.width=w;           // canvas buffer = CSS pixels (1:1, no DPR trick)
+  cv.height=310;
+  cv.style.width=w+'px';
+  cv.style.height='310px';
+}
+
+// ── S-PLANE DRAWING ───────────────────────────────────────────────────────────
+function drawSP(){
+  const P=PL[S.pi],W=cv.width,H=cv.height;
+  cx.clearRect(0,0,W,H);
+
+  // Grid
+  cx.strokeStyle='rgba(128,128,128,.12)';cx.lineWidth=.5;
+  const xStep=Math.max(1,Math.ceil((V.xr-V.xl)/10));
+  for(let x=Math.ceil(V.xl/xStep)*xStep;x<=V.xr;x+=xStep){const[p]=toPx(x,0);cx.beginPath();cx.moveTo(p,0);cx.lineTo(p,H);cx.stroke();}
+  const yStep=Math.max(1,Math.ceil((V.yr-V.yl)/8));
+  for(let y=Math.ceil(V.yl/yStep)*yStep;y<=V.yr;y+=yStep){const[,q]=toPx(0,y);cx.beginPath();cx.moveTo(0,q);cx.lineTo(W,q);cx.stroke();}
+
+  // Desired region (spec)
+  const{os,ts}=P.sp;
+  const zm=os?-Math.log(os/100)/Math.sqrt(Math.PI**2+Math.log(os/100)**2):0;
+  const sm=ts?4/ts:0;
+  if(zm>0||sm>0){
+    cx.save();
+    cx.fillStyle='rgba(34,197,94,.09)';
+    const[xs]=toPx(-sm,0),len=3*Math.max(Math.abs(V.yl),V.yr);
+    if(zm>0){
+      const ang=Math.acos(Math.min(.999,zm));
+      const[ox,oy]=toPx(0,0),[lx1,ly1]=toPx(-Math.cos(ang)*len,Math.sin(ang)*len),[lx2,ly2]=toPx(-Math.cos(ang)*len,-Math.sin(ang)*len);
+      cx.beginPath();cx.moveTo(ox,oy);cx.lineTo(lx1,ly1);cx.lineTo(xs,ly1);cx.lineTo(xs,ly2);cx.lineTo(lx2,ly2);cx.closePath();cx.fill();
+      cx.strokeStyle='rgba(34,197,94,.5)';cx.lineWidth=1;cx.setLineDash([4,3]);
+      cx.beginPath();cx.moveTo(ox,oy);cx.lineTo(lx1,ly1);cx.stroke();
+      cx.beginPath();cx.moveTo(ox,oy);cx.lineTo(lx2,ly2);cx.stroke();cx.setLineDash([]);
+      cx.fillStyle='rgba(34,197,94,.75)';cx.font='10px sans-serif';cx.textAlign='left';
+      cx.fillText('ζ≥'+zm.toFixed(2),ox+4,oy-22);
+    }else{cx.fillRect(0,0,xs,H);}
+    if(sm>0){
+      const[xv]=toPx(-sm,0);
+      cx.strokeStyle='rgba(34,197,94,.55)';cx.lineWidth=1;cx.setLineDash([4,3]);
+      cx.beginPath();cx.moveTo(xv,0);cx.lineTo(xv,H);cx.stroke();cx.setLineDash([]);
+      cx.fillStyle='rgba(34,197,94,.75)';cx.font='10px sans-serif';cx.textAlign='center';
+      cx.fillText('σ≥'+sm.toFixed(1),xv,12);
+    }
+    cx.restore();
+  }
+
+  // Asymptotes
+  const as=compAsym(getRN(),getRD());
+  if(as.a.length){
+    const[acx_,acy_]=toPx(as.c,0),len=3*Math.max(Math.abs(V.xl),V.xr,Math.abs(V.yl),V.yr);
+    cx.strokeStyle='rgba(128,128,128,.3)';cx.lineWidth=1;cx.setLineDash([6,4]);
+    for(const a of as.a){const r=a*Math.PI/180,[x1,y1]=toPx(as.c+len*Math.cos(r),len*Math.sin(r));cx.beginPath();cx.moveTo(acx_,acy_);cx.lineTo(x1,y1);cx.stroke();}
+    cx.setLineDash([]);
+    cx.fillStyle='rgba(128,128,128,.5)';cx.beginPath();cx.arc(acx_,acy_,3,0,Math.PI*2);cx.fill();
+  }
+
+  // Axes
+  const[,y0]=toPx(0,0),[x0]=toPx(0,0);
+  cx.strokeStyle='rgba(128,128,128,.45)';cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(0,y0);cx.lineTo(W,y0);cx.stroke();
+  cx.beginPath();cx.moveTo(x0,0);cx.lineTo(x0,H);cx.stroke();
+
+  // Tick labels
+  cx.fillStyle='rgba(128,128,128,.75)';cx.font='10px monospace';cx.textAlign='center';
+  for(let x=Math.ceil(V.xl/xStep)*xStep;x<=V.xr;x+=xStep){if(Math.abs(x)<.01)continue;const[p,q]=toPx(x,0);cx.fillText(x,p,Math.min(H-2,q+13));}
+  cx.textAlign='right';
+  for(let y=Math.ceil(V.yl/yStep)*yStep;y<=V.yr;y+=yStep){if(Math.abs(y)<.01)continue;const[p,q]=toPx(0,y);cx.fillText(y,Math.max(28,x0-4),q+4);}
+  cx.fillStyle='rgba(128,128,128,.7)';cx.font='11px sans-serif';
+  cx.textAlign='center';cx.fillText('σ',W-10,y0-7);
+  cx.textAlign='right';cx.fillText('jω',x0+18,14);
+
+  // Root locus branches
+  const BC=['#3B82F6','#EF4444','#22C55E','#F59E0B','#8B5CF6','#06B6D4'];
+  if(S.rld){
+    S.rld.forEach((br,i)=>{
+      cx.strokeStyle=BC[i%BC.length];cx.lineWidth=2;cx.beginPath();
+      let fst=true;
+      for(const[re,im] of br){
+        if(!isFinite(re)||!isFinite(im)||re<V.xl-1||re>V.xr+1||im<V.yl-1||im>V.yr+1){fst=true;continue;}
+        const[p,q]=toPx(re,im);
+        if(fst){cx.moveTo(p,q);fst=false;}else cx.lineTo(p,q);
+      }
+      cx.stroke();
+    });
+  }
+
+  // Lead design markers (desired pole and compensator pole/zero)
+  if(S.ctrl==='lead'&&S.ldi){
+    const d=S.ldi;
+    dX(d.sr,d.si,'#F59E0B',9);dX(d.sr,-d.si,'#F59E0B',9);
+    dO(-d.zc,0,'#FB923C',8);dX(-d.pc,0,'#FB923C',8);
+  }
+
+  // OL poles (red ×), zeros (blue ○), CL poles (green ●)
+  dk(getRD()).filter(r=>isFinite(r[0])&&isFinite(r[1])).forEach(p=>dX(p[0],p[1],'#E24B4A',10));
+  if(getRN().length>1)dk(getRN()).filter(r=>isFinite(r[0])&&isFinite(r[1])).forEach(z=>dO(z[0],z[1],'#378ADD',9));
+  const clp=dk(pAdd(getRD(),getRN().map(c=>c*S.K))).filter(r=>isFinite(r[0])&&isFinite(r[1])&&Math.abs(r[1])<1e4);
+  clp.forEach(p=>dDot(p[0],p[1],'#22C55E',7));
+}
+
+function clip(re,im){return re<V.xl-2||re>V.xr+2||Math.abs(im)>V.yr+2;}
+function dX(re,im,col,sz){if(clip(re,im))return;const[cx_,cy_]=toPx(re,im);cx.strokeStyle=col;cx.lineWidth=2.5;cx.beginPath();cx.moveTo(cx_-sz,cy_-sz);cx.lineTo(cx_+sz,cy_+sz);cx.moveTo(cx_+sz,cy_-sz);cx.lineTo(cx_-sz,cy_+sz);cx.stroke();}
+function dO(re,im,col,sz){if(clip(re,im))return;const[cx_,cy_]=toPx(re,im);cx.strokeStyle=col;cx.lineWidth=2.5;cx.beginPath();cx.arc(cx_,cy_,sz,0,Math.PI*2);cx.stroke();}
+function dDot(re,im,col,sz){if(clip(re,im))return;const[cx_,cy_]=toPx(re,im);cx.fillStyle=col;cx.beginPath();cx.arc(cx_,cy_,sz,0,Math.PI*2);cx.fill();cx.strokeStyle='rgba(255,255,255,.7)';cx.lineWidth=1.5;cx.stroke();}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const getRN=()=>{const P=PL[S.pi];return S.ctrl==='lead'?pMul([S.al*S.T,1],P.num):P.num;};
+const getRD=()=>{const P=PL[S.pi];return S.ctrl==='lead'?pMul([S.T,1],P.den):P.den;};
+const getCL=()=>{const n=getRN().map(c=>c*S.K),d=getRD();return{n,d:pAdd(d,n)};};
+
+const mH=items=>items.map(({v,u,l,good})=>{
+  const col=good===undefined?'var(--color-text-primary)':good?'var(--color-text-success)':'var(--color-text-danger)';
+  return`<div class="met"><div class="mv" style="color:${col}">${v!=null?v+u:'—'}</div><div class="ml">${l}</div></div>`;
+}).join('');
+
+function domMet(clp){
+  const dom=clp.filter(r=>r[0]>-1e4).reduce((a,p)=>a===null||p[0]>a[0]?p:a,null);
+  const z=dom?-dom[0]/Math.hypot(dom[0],dom[1]):null;
+  const wn=dom?Math.hypot(dom[0],dom[1]):null;
+  const os=(z&&z<1&&z>0)?+(Math.exp(-Math.PI*z/Math.sqrt(1-z**2))*100).toFixed(1):0;
+  const ts=(dom&&dom[0]<0)?+(4/Math.abs(dom[0])).toFixed(2):null;
+  return{z,wn,os,ts};
+}
+
+function updSd(){const sr=-S.zd*S.wnd,si=S.wnd*Math.sqrt(Math.max(0,1-S.zd**2));document.getElementById('sd').textContent=`${sr.toFixed(2)} ± j${si.toFixed(2)}`;}
+function updLtf(){if(S.ctrl==='lead')document.getElementById('ltf').textContent=`Gc(s)=(${(S.al*S.T).toFixed(4)}s+1)/(${S.T.toFixed(4)}s+1)`;}
+
+// ── STEP RESPONSE CHART ───────────────────────────────────────────────────────
+const sc=new Chart(document.getElementById('sc'),{
+  type:'line',
+  data:{datasets:[
+    {label:'No ctrl',data:[],borderColor:'#888',borderWidth:1.8,borderDash:[5,4],pointRadius:0},
+    {label:'Ctrl',data:[],borderColor:'#2563EB',borderWidth:2.5,pointRadius:0},
+    {label:'Ref',data:[],borderColor:'#E24B4A',borderWidth:1.5,borderDash:[4,3],pointRadius:0},
+  ]},
+  options:{parsing:false,animation:false,responsive:true,maintainAspectRatio:false,
+    elements:{line:{tension:0}},
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+    scales:{x:{type:'linear',title:{display:true,text:'t (s)',font:{size:10}},ticks:{font:{size:10}},grid:{color:'rgba(128,128,128,.08)'}},
+      y:{title:{display:true,text:'y(t)',font:{size:10}},ticks:{font:{size:10}},grid:{color:'rgba(128,128,128,.08)'}}}}
+});
+
+// ── MAIN UPDATE ───────────────────────────────────────────────────────────────
+function upd(){
+  const P=PL[S.pi];
+  document.getElementById('pl').textContent='G(s) = '+P.lbl;
+  document.getElementById('sb').textContent=P.spec;
+  const olp=dk(P.den).filter(r=>isFinite(r[0]));
+  document.getElementById('pol').innerHTML=olp.map(p=>`${p[0].toFixed(2)}${p[1]>=0?'+':''}${p[1].toFixed(2)}j`).join('<br>');
+
+  // Compute K range — start near 0, go to Km (log-spaced)
+  const rn=getRN(),rd=getRD();
+  const rp=dk(rd).filter(r=>isFinite(r[0])&&Math.abs(r[1])<1e4);
+  const rz=rn.length>1?dk(rn).filter(r=>isFinite(r[0])&&Math.abs(r[1])<1e4):[];
+  setV(rp,rz);
+
+  const Km=Math.max(50,S.K*2.5);
+  // Log-spaced K from 0.001 to Km (60 points, dense near K=0)
+  const Ks=Array.from({length:60},(_,i)=>0.001*Math.pow(Km/0.001,i/59));
+  S.rld=compRL(rn,rd,Ks);
+  drawSP();
+
+  // S-plane metrics
+  const clp=dk(pAdd(rd,rn.map(c=>c*S.K))).filter(r=>isFinite(r[0])&&Math.abs(r[1])<1e4);
+  const{z,wn,os,ts}=domMet(clp);
+  document.getElementById('sm').innerHTML=mH([
+    {v:S.K.toFixed(2),u:'',l:'K'},
+    {v:z?z.toFixed(3):null,u:'',l:'ζ (dominan)'},
+    {v:wn?wn.toFixed(3):null,u:' r/s',l:'ωn'},
+    {v:os,u:'%',l:'OS est.',good:os<=P.sp.os},
+    {v:ts,u:' s',l:'ts est.',good:ts!==null&&ts<=P.sp.ts},
+  ]);
+
+  // Step response
+  const{n,d}=getCL(),clB=pAdd(P.den,P.num),T=Math.max(15,ts?ts*5:15),N=300;
+  const stB=stepR(P.num,clB,T,N),stC=stepR(n,d,T,N);
+  const mB=sMet(stB),mC=sMet(stC);
+  document.getElementById('stm').innerHTML=mH([
+    {v:mB.os,u:'%',l:'OS (no ctrl)'},{v:mB.ts,u:' s',l:'ts (no ctrl)'},
+    {v:mC.os,u:'%',l:'OS (ctrl)',good:mC.os<=P.sp.os},
+    {v:mC.ts,u:' s',l:'ts (ctrl)',good:mC.ts<=P.sp.ts},{v:mC.yss,u:'',l:'yss'},
+  ]);
+  sc.data.datasets[0].data=stB;sc.data.datasets[1].data=stC;
+  sc.data.datasets[2].data=stB.map(v=>({x:v.x,y:1}));
+  sc.update();
+  updLtf();
+}
+
+// Quick K-only update (no RL recompute)
+function qUpd(){
+  drawSP();
+  const P=PL[S.pi];
+  const clp=dk(pAdd(getRD(),getRN().map(c=>c*S.K))).filter(r=>isFinite(r[0])&&Math.abs(r[1])<1e4);
+  const{z,wn,os,ts}=domMet(clp);
+  document.getElementById('sm').innerHTML=mH([
+    {v:S.K.toFixed(2),u:'',l:'K'},{v:z?z.toFixed(3):null,u:'',l:'ζ'},
+    {v:os,u:'%',l:'OS est.',good:os<=P.sp.os},{v:ts,u:' s',l:'ts est.',good:ts!==null&&ts<=P.sp.ts},
+  ]);
+  const{n,d}=getCL(),stC=stepR(n,d,Math.max(15,ts?ts*5:15),300),mC=sMet(stC);
+  document.getElementById('stm').innerHTML=mH([
+    {v:null,u:'',l:'OS (no ctrl)'},{v:null,u:'',l:'ts (no ctrl)'},
+    {v:mC.os,u:'%',l:'OS (ctrl)',good:mC.os<=P.sp.os},
+    {v:mC.ts,u:' s',l:'ts (ctrl)',good:mC.ts<=P.sp.ts},{v:mC.yss,u:'',l:'yss'},
+  ]);
+  sc.data.datasets[1].data=stC;sc.update();
+}
+
+// ── EVENTS ────────────────────────────────────────────────────────────────────
+document.getElementById('ps').addEventListener('change',e=>{
+  S.pi=+e.target.value;S.K=1;S.ldi=null;
+  document.getElementById('slK').value=1;document.getElementById('vK').textContent='1.00';
+  document.getElementById('li').innerHTML='';
+  upd();
+});
+
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));b.classList.add('on');
+  S.ctrl=b.dataset.c;
+  document.querySelectorAll('#pp>div').forEach(p=>p.classList.remove('vis'));
+  document.getElementById('pp-'+S.ctrl).classList.add('vis');
+  upd();
+}));
+
+document.getElementById('slK').addEventListener('input',e=>{
+  S.K=+e.target.value;document.getElementById('vK').textContent=S.K.toFixed(2);qUpd();
+});
+document.getElementById('slZd').addEventListener('input',e=>{
+  S.zd=+e.target.value;document.getElementById('vZd').textContent=(+e.target.value).toFixed(2);updSd();
+});
+document.getElementById('slWn').addEventListener('input',e=>{
+  S.wnd=+e.target.value;document.getElementById('vWn').textContent=(+e.target.value).toFixed(1);updSd();
+});
+document.getElementById('slAl').addEventListener('input',e=>{
+  S.al=+e.target.value;document.getElementById('vAl').textContent=(+e.target.value).toFixed(1);upd();
+});
+document.getElementById('slT').addEventListener('input',e=>{
+  S.T=+e.target.value;document.getElementById('vT').textContent=(+e.target.value).toFixed(3);upd();
+});
+
+document.getElementById('bLD').addEventListener('click',()=>{
+  const d=leadDes(PL[S.pi].num,PL[S.pi].den,S.zd,S.wnd);
+  S.ldi=d;S.al=d.alpha;S.T=d.T;S.K=Math.min(200,d.K);
+  document.getElementById('slAl').value=d.alpha;document.getElementById('vAl').textContent=d.alpha.toFixed(1);
+  document.getElementById('slT').value=d.T;document.getElementById('vT').textContent=d.T.toFixed(3);
+  document.getElementById('slK').value=Math.min(200,d.K);document.getElementById('vK').textContent=d.K.toFixed(2);
+  document.getElementById('li').innerHTML=
+    `s<sub>d</sub> = ${d.sr.toFixed(2)} ± j${d.si.toFixed(2)}<br>`+
+    `∠ kekurangan = ${d.phi.toFixed(1)}°<br>`+
+    `Zero Gc: s = −${d.zc.toFixed(3)}<br>`+
+    `Pole Gc: s = −${d.pc.toFixed(3)}<br>`+
+    `α = ${d.alpha} | T = ${d.T} s<br>`+
+    `K = ${d.K}`;
+  upd();
+});
+
+window.addEventListener('resize',()=>{rsz();if(S.rld)drawSP();});
+
+// ── INIT — delay to let grid layout settle ────────────────────────────────────
+setTimeout(()=>{rsz();updSd();upd();},120);
+</script>
